@@ -17,7 +17,7 @@ import {
   readJSONFile,
   writeJSONFile,
 } from './tools.js';
-import { JsonValue, JsonValueSchema } from './types.js';
+import { JsonValueSchema } from './types.js';
 
 // Create server instance
 const server = new Server(

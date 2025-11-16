@@ -7,9 +7,26 @@ import {
   setAtPath,
   deleteAtPath,
 } from './tools.js';
+import { JsonValue } from './types.js';
+import { JSONPath } from 'jsonpath-plus';
+
+function jsonPath(json: JsonValue, path: string): JsonValue[] {
+  const results: JsonValue[] = [];
+  JSONPath({
+    path,
+    json,
+    wrap: true,
+    resultType: 'value',
+    callback: (result) => {
+      results.push(result);
+    },
+  });
+
+  return results;
+}
 
 // Test data
-const sampleData = {
+const sampleData: JsonValue = {
   store: {
     book: [
       {
@@ -100,9 +117,9 @@ describe('JSON MCP Server Tools', () => {
         '$.store.bicycle.color',
         'blue'
       );
-      expect(result.store.bicycle.color).toBe('blue');
+      expect(jsonPath(result, '$.store.bicycle.color')).toEqual(['blue']);
       // Original should be unchanged
-      expect(sampleData.store.bicycle.color).toBe('red');
+      expect(jsonPath(sampleData, '$.store.bicycle.color')).toEqual(['red']);
     });
 
     it('should replace multiple values', () => {
@@ -111,9 +128,9 @@ describe('JSON MCP Server Tools', () => {
         '$.store.book[*].price',
         9.99
       );
-      expect(result.store.book[0].price).toBe(9.99);
-      expect(result.store.book[1].price).toBe(9.99);
-      expect(result.store.book[2].price).toBe(9.99);
+      expect(jsonPath(result, '$.store.book[0].price')).toEqual([9.99]);
+      expect(jsonPath(result, '$.store.book[1].price')).toEqual([9.99]);
+      expect(jsonPath(result, '$.store.book[2].price')).toEqual([9.99]);
     });
 
     it('should replace object value', () => {
@@ -123,7 +140,7 @@ describe('JSON MCP Server Tools', () => {
         '$.store.bicycle',
         newBicycle
       );
-      expect(result.store.bicycle).toEqual(newBicycle);
+      expect(jsonPath(result, '$.store.bicycle')).toEqual([newBicycle]);
     });
   });
 
@@ -137,8 +154,8 @@ describe('JSON MCP Server Tools', () => {
       };
       // append to the book array (path points to the array)
       const result = appendToArrayAtPath(sampleData, '$.store.book', newBook);
-      expect(result.store.book).toHaveLength(4);
-      expect(result.store.book[3]).toEqual(newBook);
+      expect(jsonPath(result, '$.store.book')).toHaveLength(4);
+      expect(jsonPath(result, '$.store.book[3]')).toEqual([newBook]);
     });
 
     it('should throw when path points to non-array', () => {
@@ -152,13 +169,13 @@ describe('JSON MCP Server Tools', () => {
   describe('set (upsert)', () => {
     it('should replace existing property', () => {
       const result = setAtPath(sampleData, '$.store.bicycle.color', 'blue');
-      expect(result.store.bicycle.color).toBe('blue');
-      expect(sampleData.store.bicycle.color).toBe('red');
+      expect(jsonPath(result, '$.store.bicycle.color')).toEqual(['blue']);
+      expect(jsonPath(sampleData, '$.store.bicycle.color')).toEqual(['red']);
     });
 
     it('should create a missing simple property when parent exists', () => {
       const result = setAtPath(sampleData, '$.store.bicycle.newKey', 'newVal');
-      expect(result.store.bicycle.newKey).toBe('newVal');
+      expect(jsonPath(result, '$.store.bicycle.newKey')).toEqual(['newVal']);
     });
 
     it('should NOT create intermediate objects when parent chain is missing', () => {
@@ -168,22 +185,22 @@ describe('JSON MCP Server Tools', () => {
     it('should only set the first matched parent (no applyToAllMatches)', () => {
       const data = { items: [{ a: 1 }, { a: 2 }] };
       const result = setAtPath(data, '$.items[*].newKey', 'x');
-      expect(result.items[0].newKey).toBe('x');
-      expect(result.items[1].newKey).toBeUndefined();
+      expect(jsonPath(result, '$.items[0].newKey')).toEqual(['x']);
+      expect(jsonPath(result, '$.items[1].newKey')).toEqual([]);
     });
   });
 
   describe('delete', () => {
     it('should delete array element', () => {
       const result = deleteAtPath(sampleData, '$.store.book[0]');
-      expect(result.store.book).toHaveLength(2);
-      expect(result.store.book[0].author).toBe('Evelyn Waugh');
+      expect(jsonPath(result, '$.store.book')).toHaveLength(2);
+      expect(jsonPath(result, '$.store.book[0].author')).toEqual(['Evelyn Waugh']);
     });
 
     it('should delete object property', () => {
       const result = deleteAtPath(sampleData, '$.store.bicycle.color');
-      expect(result.store.bicycle.color).toBeUndefined();
-      expect(result.store.bicycle.price).toBe(19.95);
+      expect(jsonPath(result, '$.store.bicycle.color')).toEqual([]);
+      expect(jsonPath(result, '$.store.bicycle.price')).toEqual([19.95]);
     });
 
     it('should delete multiple elements', () => {
@@ -191,8 +208,8 @@ describe('JSON MCP Server Tools', () => {
         sampleData,
         '$.store.book[?(@.category == "fiction")]'
       );
-      expect(result.store.book).toHaveLength(1);
-      expect(result.store.book[0].category).toBe('reference');
+      expect(jsonPath(result, '$.store.book')).toHaveLength(1);
+      expect(jsonPath(result, '$.store.book[0].category')).toEqual(['reference']);
     });
   });
 });

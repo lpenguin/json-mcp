@@ -24,10 +24,14 @@ export function writeJSONFile(filePath: string, data: JsonValue): void {
 }
 
 // Helper function to search text in JSON
-export function searchInJSON(data: JsonValue, searchText: string, currentPath: string = '$'): Array<{ path: string; value: JsonValue; context: JsonValue | null }> {
-  const results: Array<{ path: string; value: JsonValue; context: JsonValue | null }> = [];
+export function searchInJSON(
+  data: JsonValue,
+  searchText: string,
+  currentPath: string = '$'
+): Array<{ path: string; value: JsonValue }> {
+  const results: Array<{ path: string; value: JsonValue }> = [];
 
-  function search(obj: JsonValue, path: string, parent: JsonValue | null = null) {
+  function search(obj: JsonValue, path: string) {
     if (obj === null || obj === undefined) {
       return;
     }
@@ -37,24 +41,23 @@ export function searchInJSON(data: JsonValue, searchText: string, currentPath: s
       results.push({
         path,
         value: obj,
-        context: parent,
       });
     }
 
     if (typeof obj === 'object' && obj !== null) {
       if (Array.isArray(obj)) {
         obj.forEach((item, index) => {
-          search(item, `${path}[${index}]`, obj);
+          search(item, `${path}[${index}]`);
         });
       } else {
         Object.keys(obj).forEach((key) => {
-          search(obj[key], `${path}.${key}`, obj);
+          search((obj)[key], `${path}.${key}`);
         });
       }
     }
   }
 
-  search(data, currentPath, null);
+  search(data, currentPath);
   return results;
 }
 
