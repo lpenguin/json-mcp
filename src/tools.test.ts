@@ -59,25 +59,87 @@ const sampleData: JsonValue = {
 
 describe('JSON MCP Server Tools', () => {
   describe('search', () => {
-    it('should find matching text in strings', () => {
+    it('should find matching text in strings and return only leaf values, not parent objects', () => {
       const results = searchInJSON(sampleData, 'Moby');
-      expect(results.length).toBeGreaterThan(0);
-      expect(results.some((r) => r.value === 'Moby Dick')).toBe(true);
+      
+      // Should only find the actual string "Moby Dick", not parent objects
+      expect(results).toHaveLength(1);
+      expect(results[0].value).toBe('Moby Dick');
+      expect(results[0].path).toBe('$.store.book[2].title');
     });
 
     it('should find matching text case-insensitively', () => {
       const results = searchInJSON(sampleData, 'moby');
-      expect(results.length).toBeGreaterThan(0);
+      
+      // Should only match the title string
+      expect(results).toHaveLength(1);
+      expect(results[0].value).toBe('Moby Dick');
+      expect(results[0].path).toBe('$.store.book[2].title');
     });
 
-    it('should find matching text in nested objects', () => {
+    it('should find matching text in nested objects and return all matching leaf values', () => {
       const results = searchInJSON(sampleData, 'fiction');
-      expect(results.length).toBeGreaterThan(0);
+      
+      // Should find only the two category strings, not parent book objects
+      expect(results).toHaveLength(2);
+      expect(results[0].value).toBe('fiction');
+      expect(results[0].path).toBe('$.store.book[1].category');
+      expect(results[1].value).toBe('fiction');
+      expect(results[1].path).toBe('$.store.book[2].category');
+    });
+
+    it('should find numbers when searching', () => {
+      const results = searchInJSON(sampleData, '8.95');
+      
+      // Should find the exact number
+      expect(results).toHaveLength(1);
+      expect(results[0].value).toBe(8.95);
+      expect(results[0].path).toBe('$.store.book[0].price');
+    });
+
+    it('should find partial matches in strings', () => {
+      const results = searchInJSON(sampleData, 'Honour');
+      
+      expect(results).toHaveLength(1);
+      expect(results[0].value).toBe('Sword of Honour');
+      expect(results[0].path).toBe('$.store.book[1].title');
+    });
+
+    it('should not return parent objects when child matches', () => {
+      const results = searchInJSON(sampleData, 'red');
+      
+      // Should only find the color value, NOT the bicycle object or store object
+      expect(results).toHaveLength(1);
+      expect(results[0].value).toBe('red');
+      expect(results[0].path).toBe('$.store.bicycle.color');
     });
 
     it('should return empty array when no matches found', () => {
       const results = searchInJSON(sampleData, 'nonexistent');
       expect(results).toEqual([]);
+    });
+
+    it('should handle searching in arrays', () => {
+      const data = {
+        tags: ['javascript', 'typescript', 'python'],
+      };
+      const results = searchInJSON(data, 'script');
+      
+      // Should find both strings containing "script"
+      expect(results).toHaveLength(2);
+      expect(results[0].value).toBe('javascript');
+      expect(results[0].path).toBe('$.tags[0]');
+      expect(results[1].value).toBe('typescript');
+      expect(results[1].path).toBe('$.tags[1]');
+    });
+
+    it('should handle searching in simple values', () => {
+      const data = 'simple string';
+      const results = searchInJSON(data, 'simple');
+      
+      expect(results).toHaveLength(1);
+      expect(results[0].value).toBe('simple string');
+      expect(results[0].path).toBe('$');
     });
   });
 

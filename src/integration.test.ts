@@ -120,12 +120,17 @@ describe('MCP Integration Tests', () => {
       arguments: {
         file: testFile,
         path: '$.user.age',
-        newValue: 31,
+        value: 31,
       },
     });
 
-  const result = JSON.parse(((replaceResponse as any).content[0] as any).text);
-    expect(result.user.age).toBe(31);
+    const responseText = ((replaceResponse as any).content[0] as any).text;
+    expect(responseText).toBe('File updated successfully');
+    
+    // Read the file to verify the change
+    const fs = await import('fs');
+    const updatedData = JSON.parse(fs.readFileSync(testFile, 'utf-8'));
+    expect(updatedData.user.age).toBe(31);
   });
 
   it('should delete data at JSONPath', async () => {
@@ -144,8 +149,13 @@ describe('MCP Integration Tests', () => {
       },
     });
 
-  const result = JSON.parse(((deleteResponse as any).content[0] as any).text);
-    expect(result.items).toEqual([2, 3, 4]);
+    const responseText = ((deleteResponse as any).content[0] as any).text;
+    expect(responseText).toBe('File updated successfully');
+    
+    // Read the file to verify the change
+    const fs = await import('fs');
+    const updatedData = JSON.parse(fs.readFileSync(testFile, 'utf-8'));
+    expect(updatedData.items).toEqual([2, 3, 4]);
   });
 
   it('should append data at JSONPath', async () => {
@@ -153,7 +163,7 @@ describe('MCP Integration Tests', () => {
       items: [1, 2, 3],
     };
     
-  const testFile = join(testDir, 'test-append.json');
+    const testFile = join(testDir, 'test-append.json');
     writeFileSync(testFile, JSON.stringify(testData, null, 2));
 
     const insertResponse = await client.callTool({
@@ -161,13 +171,17 @@ describe('MCP Integration Tests', () => {
       arguments: {
         file: testFile,
         path: '$.items',
-        newValue: 1.5,
+        value: 1.5,
       },
     });
 
-  const result = JSON.parse(((insertResponse as any).content[0] as any).text);
-    // append semantics: newValue is added to the end of the array
-    expect(result.items).toEqual([1, 2, 3, 1.5]);
+    const responseText = ((insertResponse as any).content[0] as any).text;
+    expect(responseText).toBe('File updated successfully');
+    
+    // Read the file to verify the change
+    const fs = await import('fs');
+    const updatedData = JSON.parse(fs.readFileSync(testFile, 'utf-8'));
+    expect(updatedData.items).toEqual([1, 2, 3, 1.5]);
   });
 
   it('should handle errors gracefully', async () => {
@@ -213,17 +227,17 @@ describe('MCP Integration Tests', () => {
   expect(((resp as any).content[0] as any).text).toContain('Missing required parameter: file');
     });
 
-    it('replace should error when missing newValue', async () => {
+    it('replace should error when missing value', async () => {
       const testFile = join(testDir, 'test-invalid-replace.json');
       writeFileSync(testFile, JSON.stringify({ user: { age: 1 } }, null, 2));
       const resp = await client.callTool({
         name: 'replace',
-        arguments: { file: testFile, path: '$.user.age' }, // missing newValue
+        arguments: { file: testFile, path: '$.user.age' }, // missing value
       });
 
       expect(resp).toBeDefined();
       expect(resp.isError).toBe(true);
-  expect(((resp as any).content[0] as any).text).toContain('Missing required parameter: newValue');
+      expect(((resp as any).content[0] as any).text).toContain('Missing required parameter: value');
     });
 
     it('appendToArray should error when missing path', async () => {
@@ -231,12 +245,12 @@ describe('MCP Integration Tests', () => {
       writeFileSync(testFile, JSON.stringify({ items: [1] }, null, 2));
       const resp = await client.callTool({
         name: 'appendToArray',
-        arguments: { file: testFile, newValue: 2 }, // missing path
+        arguments: { file: testFile, value: 2 }, // missing path
       });
 
       expect(resp).toBeDefined();
       expect(resp.isError).toBe(true);
-  expect(((resp as any).content[0] as any).text).toContain('Missing required parameter: path');
+      expect(((resp as any).content[0] as any).text).toContain('Missing required parameter: path');
     });
 
     it('delete should error when missing path', async () => {

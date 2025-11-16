@@ -84,11 +84,11 @@ const tools: Tool[] = [
           type: 'string',
           description: 'JSONPath expression pointing to the element to replace',
         },
-        newValue: {
+        value: {
           description: 'New value to replace the element with',
         },
       },
-      required: ['file', 'path', 'newValue'],
+      required: ['file', 'path', 'value'],
     },
   },
   {
@@ -105,11 +105,11 @@ const tools: Tool[] = [
           type: 'string',
           description: 'JSONPath expression that selects array node(s) to append into (e.g., "$.items")',
         },
-        newValue: {
+        value: {
           description: 'New value to append',
         },
       },
-      required: ['file', 'path', 'newValue'],
+      required: ['file', 'path', 'value'],
     },
   },
   {
@@ -191,40 +191,40 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'replace': {
-        const { file, path, newValue } = args as { file: string; path: string; newValue: unknown };
+        const { file, path, value } = args as { file: string; path: string; value: unknown };
         if (file === undefined) throw new Error("Missing required parameter: file");
         if (path === undefined) throw new Error("Missing required parameter: path");
-        if (newValue === undefined) throw new Error("Missing required parameter: newValue");
+        if (value === undefined) throw new Error("Missing required parameter: value");
         const data = readJSONFile(file);
-        const validatedNewValue = JsonValueSchema.parse(newValue);
-        const result = replaceAtPath(data, path, validatedNewValue);
+        const validatedValue = JsonValueSchema.parse(value);
+        const result = replaceAtPath(data, path, validatedValue);
         writeJSONFile(file, result);
         
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: 'File updated successfully',
             },
           ],
         };
       }
 
       case 'appendToArray': {
-        const { file, path, newValue } = args as { file: string; path: string; newValue: unknown };
+        const { file, path, value } = args as { file: string; path: string; value: unknown };
         if (file === undefined) throw new Error("Missing required parameter: file");
         if (path === undefined) throw new Error("Missing required parameter: path");
-        if (newValue === undefined) throw new Error("Missing required parameter: newValue");
+        if (value === undefined) throw new Error("Missing required parameter: value");
         const data = readJSONFile(file);
-        const validatedNewValue = JsonValueSchema.parse(newValue);
-        const result = appendToArrayAtPath(data, path, validatedNewValue);
+        const validatedValue = JsonValueSchema.parse(value);
+        const result = appendToArrayAtPath(data, path, validatedValue);
         writeJSONFile(file, result);
 
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: 'File updated successfully',
             },
           ],
         };
@@ -244,7 +244,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: 'File updated successfully',
             },
           ],
         };
@@ -262,7 +262,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: 'File updated successfully',
             },
           ],
         };

@@ -30,21 +30,26 @@ export function searchInJSON(
   currentPath: string = '$'
 ): Array<{ path: string; value: JsonValue }> {
   const results: Array<{ path: string; value: JsonValue }> = [];
+  const lowerSearchText = searchText.toLowerCase();
 
   function search(obj: JsonValue, path: string) {
     if (obj === null || obj === undefined) {
       return;
     }
 
-    const objString = typeof obj === 'string' ? obj : JSON.stringify(obj);
-    if (objString.toLowerCase().includes(searchText.toLowerCase())) {
-      results.push({
-        path,
-        value: obj,
-      });
-    }
-
-    if (typeof obj === 'object' && obj !== null) {
+    // For primitive values (string, number, boolean), check if they match
+    if (typeof obj === 'string') {
+      if (obj.toLowerCase().includes(lowerSearchText)) {
+        results.push({ path, value: obj });
+      }
+    } else if (typeof obj === 'number' || typeof obj === 'boolean') {
+      // Convert to string to check if the search text matches
+      if (String(obj).toLowerCase().includes(lowerSearchText)) {
+        results.push({ path, value: obj });
+      }
+    } else if (typeof obj === 'object' && obj !== null) {
+      // For objects and arrays, recursively search children
+      // Do NOT check the stringified object itself
       if (Array.isArray(obj)) {
         obj.forEach((item, index) => {
           search(item, `${path}[${index}]`);
