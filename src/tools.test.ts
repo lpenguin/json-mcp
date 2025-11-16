@@ -11,18 +11,19 @@ import { JsonValue } from './types.js';
 import { JSONPath } from 'jsonpath-plus';
 
 function jsonPath(json: JsonValue, path: string): JsonValue[] {
-  const results: JsonValue[] = [];
-  JSONPath({
+  const result = JSONPath({
     path,
     json,
     wrap: true,
     resultType: 'value',
-    callback: (result) => {
-      results.push(result);
-    },
-  });
+  }) as JsonValue[];
 
-  return results;
+  // If result is a single array, flatten it one level
+  if (result.length === 1 && Array.isArray(result[0])) {
+    return result[0] as JsonValue[];
+  }
+
+  return result;
 }
 
 // Test data
