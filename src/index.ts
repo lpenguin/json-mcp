@@ -143,6 +143,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (name) {
       case 'search': {
         const { file, searchText } = args as { file: string; searchText: string };
+        if (file === undefined) throw new Error("Missing required parameter: file");
+        if (searchText === undefined) throw new Error("Missing required parameter: searchText");
         const data = readJSONFile(file);
         const results = searchInJSON(data, searchText);
         
@@ -158,6 +160,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'query': {
         const { file, path } = args as { file: string; path: string };
+        if (file === undefined) throw new Error("Missing required parameter: file");
+        if (path === undefined) throw new Error("Missing required parameter: path");
         const data = readJSONFile(file);
         const results = queryByPath(data, path);
         
@@ -173,6 +177,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'replace': {
         const { file, path, newValue } = args as { file: string; path: string; newValue: any };
+        if (file === undefined) throw new Error("Missing required parameter: file");
+        if (path === undefined) throw new Error("Missing required parameter: path");
+        if (newValue === undefined) throw new Error("Missing required parameter: newValue");
         const data = readJSONFile(file);
         const result = replaceAtPath(data, path, newValue);
         writeJSONFile(file, result);
@@ -189,6 +196,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'insert': {
         const { file, path, newValue } = args as { file: string; path: string; newValue: any };
+        if (file === undefined) throw new Error("Missing required parameter: file");
+        if (path === undefined) throw new Error("Missing required parameter: path");
+        if (newValue === undefined) throw new Error("Missing required parameter: newValue");
         const data = readJSONFile(file);
         const result = insertAtPath(data, path, newValue);
         writeJSONFile(file, result);
@@ -205,6 +215,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'delete': {
         const { file, path } = args as { file: string; path: string };
+        if (file === undefined) throw new Error("Missing required parameter: file");
+        if (path === undefined) throw new Error("Missing required parameter: path");
         const data = readJSONFile(file);
         const result = deleteAtPath(data, path);
         writeJSONFile(file, result);

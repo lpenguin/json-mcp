@@ -78,7 +78,7 @@ describe('MCP Integration Tests', () => {
       },
     });
 
-    const results = JSON.parse((searchResponse.content[0] as any).text);
+  const results = JSON.parse(((searchResponse as any).content[0] as any).text);
     expect(Array.isArray(results)).toBe(true);
     expect(results.length).toBeGreaterThan(0);
   });
@@ -104,7 +104,7 @@ describe('MCP Integration Tests', () => {
       },
     });
 
-    const results = JSON.parse((queryResponse.content[0] as any).text);
+  const results = JSON.parse(((queryResponse as any).content[0] as any).text);
     expect(results).toEqual(['Book 1', 'Book 2']);
   });
 
@@ -125,7 +125,7 @@ describe('MCP Integration Tests', () => {
       },
     });
 
-    const result = JSON.parse((replaceResponse.content[0] as any).text);
+  const result = JSON.parse(((replaceResponse as any).content[0] as any).text);
     expect(result.user.age).toBe(31);
   });
 
@@ -145,7 +145,7 @@ describe('MCP Integration Tests', () => {
       },
     });
 
-    const result = JSON.parse((deleteResponse.content[0] as any).text);
+  const result = JSON.parse(((deleteResponse as any).content[0] as any).text);
     expect(result.items).toEqual([2, 3, 4]);
   });
 
@@ -166,7 +166,7 @@ describe('MCP Integration Tests', () => {
       },
     });
 
-    const result = JSON.parse((insertResponse.content[0] as any).text);
+  const result = JSON.parse(((insertResponse as any).content[0] as any).text);
     expect(result.items).toEqual([1, 2, 1.5, 3]);
   });
 
@@ -185,5 +185,71 @@ describe('MCP Integration Tests', () => {
       // Expected to throw
       expect(error).toBeDefined();
     }
+  });
+
+  describe('invalid parameters', () => {
+    it('search should error when missing searchText', async () => {
+      const testFile = join(testDir, 'test-invalid-search.json');
+      writeFileSync(testFile, JSON.stringify({ a: 1 }, null, 2));
+
+      const resp = await client.callTool({
+        name: 'search',
+        arguments: { file: testFile }, // missing searchText
+      });
+
+      expect(resp).toBeDefined();
+      expect(resp.isError).toBe(true);
+  expect(((resp as any).content[0] as any).text).toContain('Missing required parameter: searchText');
+    });
+
+    it('query should error when missing file', async () => {
+      const resp = await client.callTool({
+        name: 'query',
+        arguments: { path: '$.a' }, // missing file
+      });
+
+      expect(resp).toBeDefined();
+      expect(resp.isError).toBe(true);
+  expect(((resp as any).content[0] as any).text).toContain('Missing required parameter: file');
+    });
+
+    it('replace should error when missing newValue', async () => {
+      const testFile = join(testDir, 'test-invalid-replace.json');
+      writeFileSync(testFile, JSON.stringify({ user: { age: 1 } }, null, 2));
+      const resp = await client.callTool({
+        name: 'replace',
+        arguments: { file: testFile, path: '$.user.age' }, // missing newValue
+      });
+
+      expect(resp).toBeDefined();
+      expect(resp.isError).toBe(true);
+  expect(((resp as any).content[0] as any).text).toContain('Missing required parameter: newValue');
+    });
+
+    it('insert should error when missing path', async () => {
+      const testFile = join(testDir, 'test-invalid-insert.json');
+      writeFileSync(testFile, JSON.stringify({ items: [1] }, null, 2));
+      const resp = await client.callTool({
+        name: 'insert',
+        arguments: { file: testFile, newValue: 2 }, // missing path
+      });
+
+      expect(resp).toBeDefined();
+      expect(resp.isError).toBe(true);
+  expect(((resp as any).content[0] as any).text).toContain('Missing required parameter: path');
+    });
+
+    it('delete should error when missing path', async () => {
+      const testFile = join(testDir, 'test-invalid-delete.json');
+      writeFileSync(testFile, JSON.stringify({ items: [1] }, null, 2));
+      const resp = await client.callTool({
+        name: 'delete',
+        arguments: { file: testFile }, // missing path
+      });
+
+      expect(resp).toBeDefined();
+      expect(resp.isError).toBe(true);
+  expect(((resp as any).content[0] as any).text).toContain('Missing required parameter: path');
+    });
   });
 });
