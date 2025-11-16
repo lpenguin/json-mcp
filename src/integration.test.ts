@@ -49,16 +49,15 @@ describe('MCP Integration Tests', () => {
     const response = await client.listTools();
     
     expect(response.tools).toBeDefined();
-    expect(response.tools.length).toBe(5); // Only 5 tools now (removed set_data and get_data)
+    expect(response.tools.length).toBe(6); // Now 6 tools (added set)
     
     const toolNames = response.tools.map((tool) => tool.name);
     expect(toolNames).toContain('search');
     expect(toolNames).toContain('query');
     expect(toolNames).toContain('replace');
-    expect(toolNames).toContain('insert');
+    expect(toolNames).toContain('appendToArray');
     expect(toolNames).toContain('delete');
-    expect(toolNames).not.toContain('set_data');
-    expect(toolNames).not.toContain('get_data');
+    expect(toolNames).toContain('set');
   });
 
   it('should search JSON data', async () => {
@@ -78,7 +77,7 @@ describe('MCP Integration Tests', () => {
       },
     });
 
-  const results = JSON.parse(((searchResponse as any).content[0] as any).text);
+    const results = JSON.parse(((searchResponse as any).content[0] as any).text);
     expect(Array.isArray(results)).toBe(true);
     expect(results.length).toBeGreaterThan(0);
   });
@@ -149,25 +148,26 @@ describe('MCP Integration Tests', () => {
     expect(result.items).toEqual([2, 3, 4]);
   });
 
-  it('should insert data at JSONPath', async () => {
+  it('should append data at JSONPath', async () => {
     const testData = {
       items: [1, 2, 3],
     };
     
-    const testFile = join(testDir, 'test-insert.json');
+  const testFile = join(testDir, 'test-append.json');
     writeFileSync(testFile, JSON.stringify(testData, null, 2));
 
     const insertResponse = await client.callTool({
-      name: 'insert',
+      name: 'appendToArray',
       arguments: {
         file: testFile,
-        path: '$.items[1]',
+        path: '$.items',
         newValue: 1.5,
       },
     });
 
   const result = JSON.parse(((insertResponse as any).content[0] as any).text);
-    expect(result.items).toEqual([1, 2, 1.5, 3]);
+    // append semantics: newValue is added to the end of the array
+    expect(result.items).toEqual([1, 2, 3, 1.5]);
   });
 
   it('should handle errors gracefully', async () => {
@@ -226,11 +226,11 @@ describe('MCP Integration Tests', () => {
   expect(((resp as any).content[0] as any).text).toContain('Missing required parameter: newValue');
     });
 
-    it('insert should error when missing path', async () => {
+    it('appendToArray should error when missing path', async () => {
       const testFile = join(testDir, 'test-invalid-insert.json');
       writeFileSync(testFile, JSON.stringify({ items: [1] }, null, 2));
       const resp = await client.callTool({
-        name: 'insert',
+        name: 'appendToArray',
         arguments: { file: testFile, newValue: 2 }, // missing path
       });
 

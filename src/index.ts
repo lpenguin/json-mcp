@@ -11,7 +11,8 @@ import {
   searchInJSON,
   queryByPath,
   replaceAtPath,
-  insertAtPath,
+  appendToArrayAtPath,
+  setAtPath,
   deleteAtPath,
   readJSONFile,
   writeJSONFile,
@@ -90,8 +91,8 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'insert',
-    description: 'Insert element after JSONPath (must be an object or array)',
+    name: 'appendToArray',
+    description: 'Append element to array(s) selected by JSONPath',
     inputSchema: {
       type: 'object',
       properties: {
@@ -101,13 +102,26 @@ const tools: Tool[] = [
         },
         path: {
           type: 'string',
-          description: 'JSONPath expression pointing to the location to insert after',
+          description: 'JSONPath expression that selects array node(s) to append into (e.g., "$.items")',
         },
         newValue: {
-          description: 'New value to insert',
+          description: 'New value to append',
         },
       },
       required: ['file', 'path', 'newValue'],
+    },
+  },
+  {
+    name: 'set',
+    description: 'Set (upsert) a value at a JSONPath.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string' },
+        path: { type: 'string', description: 'JSONPath to set (supports simple dotted/bracket property forms for creation)' },
+        value: { description: 'Value to set' },
+      },
+      required: ['file', 'path', 'value'],
     },
   },
   {
@@ -194,15 +208,34 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case 'insert': {
+      case 'appendToArray': {
         const { file, path, newValue } = args as { file: string; path: string; newValue: any };
         if (file === undefined) throw new Error("Missing required parameter: file");
         if (path === undefined) throw new Error("Missing required parameter: path");
         if (newValue === undefined) throw new Error("Missing required parameter: newValue");
         const data = readJSONFile(file);
-        const result = insertAtPath(data, path, newValue);
+        const result = appendToArrayAtPath(data, path, newValue);
         writeJSONFile(file, result);
-        
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'set': {
+        const { file, path, value } = args as { file: string; path: string; value: any };
+        if (file === undefined) throw new Error('Missing required parameter: file');
+        if (path === undefined) throw new Error('Missing required parameter: path');
+        if (value === undefined) throw new Error('Missing required parameter: value');
+        const data = readJSONFile(file);
+        const result = setAtPath(data, path, value);
+        writeJSONFile(file, result);
+
         return {
           content: [
             {

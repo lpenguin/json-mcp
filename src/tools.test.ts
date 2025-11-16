@@ -3,7 +3,8 @@ import {
   searchInJSON,
   queryByPath,
   replaceAtPath,
-  insertAtPath,
+  appendToArrayAtPath,
+  setAtPath,
   deleteAtPath,
 } from './tools.js';
 
@@ -126,26 +127,49 @@ describe('JSON MCP Server Tools', () => {
     });
   });
 
-  describe('insert', () => {
-    it('should insert into array', () => {
+  describe('appendToArray', () => {
+    it('should append into array', () => {
       const newBook = {
         category: 'science',
         author: 'Carl Sagan',
         title: 'Cosmos',
         price: 15.99,
       };
-      const result = insertAtPath(sampleData, '$.store.book[0]', newBook);
+      // append to the book array (path points to the array)
+      const result = appendToArrayAtPath(sampleData, '$.store.book', newBook);
       expect(result.store.book).toHaveLength(4);
-      expect(result.store.book[1]).toEqual(newBook);
+      expect(result.store.book[3]).toEqual(newBook);
     });
 
-    it('should insert into object', () => {
-      const result = insertAtPath(
-        sampleData,
-        '$.store.bicycle.color',
-        'additional_value'
-      );
-      expect(result.store.bicycle.new_item).toBe('additional_value');
+    it('should throw when path points to non-array', () => {
+      const newValue = 42;
+      expect(() =>
+        appendToArrayAtPath(sampleData, '$.store.bicycle', newValue)
+      ).toThrow();
+    });
+  });
+
+  describe('set (upsert)', () => {
+    it('should replace existing property', () => {
+      const result = setAtPath(sampleData, '$.store.bicycle.color', 'blue');
+      expect(result.store.bicycle.color).toBe('blue');
+      expect(sampleData.store.bicycle.color).toBe('red');
+    });
+
+    it('should create a missing simple property when parent exists', () => {
+      const result = setAtPath(sampleData, '$.store.bicycle.newKey', 'newVal');
+      expect(result.store.bicycle.newKey).toBe('newVal');
+    });
+
+    it('should NOT create intermediate objects when parent chain is missing', () => {
+      expect(() => setAtPath(sampleData, '$.newRoot.level1.level2.key', 123)).toThrow();
+    });
+
+    it('should only set the first matched parent (no applyToAllMatches)', () => {
+      const data = { items: [{ a: 1 }, { a: 2 }] };
+      const result = setAtPath(data, '$.items[*].newKey', 'x');
+      expect(result.items[0].newKey).toBe('x');
+      expect(result.items[1].newKey).toBeUndefined();
     });
   });
 

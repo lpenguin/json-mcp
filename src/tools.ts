@@ -24,34 +24,34 @@ export function writeJSONFile(filePath: string, data: any): void {
 // Helper function to search text in JSON
 export function searchInJSON(data: any, searchText: string, currentPath: string = '$'): Array<{ path: string; value: any; context: any }> {
   const results: Array<{ path: string; value: any; context: any }> = [];
-  
+
   function search(obj: any, path: string, parent: any = null) {
     if (obj === null || obj === undefined) {
       return;
     }
-    
+
     const objString = typeof obj === 'string' ? obj : JSON.stringify(obj);
     if (objString.toLowerCase().includes(searchText.toLowerCase())) {
       results.push({
         path,
         value: obj,
-        context: parent
+        context: parent,
       });
     }
-    
+
     if (typeof obj === 'object' && obj !== null) {
       if (Array.isArray(obj)) {
         obj.forEach((item, index) => {
           search(item, `${path}[${index}]`, obj);
         });
       } else {
-        Object.keys(obj).forEach(key => {
+        Object.keys(obj).forEach((key) => {
           search(obj[key], `${path}.${key}`, obj);
         });
       }
     }
   }
-  
+
   search(data, currentPath, null);
   return results;
 }
@@ -68,86 +68,136 @@ export function queryByPath(data: any, path: string): any[] {
 // Helper function to replace value at JSONPath
 export function replaceAtPath(data: any, path: string, newValue: any): any {
   const clonedData = JSON.parse(JSON.stringify(data));
-  
+
   try {
     const results = JSONPath({
       path,
       json: clonedData,
-      resultType: 'all'
+      resultType: 'all',
     });
-    
+
     results.forEach((result: any) => {
       const parent = result.parent;
       const parentProperty = result.parentProperty;
-      
+
       if (parent && parentProperty !== undefined) {
         parent[parentProperty] = newValue;
       }
     });
-    
+
     return clonedData;
   } catch (error) {
     throw new Error(`Failed to replace at path: ${error}`);
   }
 }
 
-// Helper function to insert value after JSONPath
-export function insertAtPath(data: any, path: string, newValue: any): any {
+// Append to arrays only: path must select array node(s). Throws otherwise.
+export function appendToArrayAtPath(data: any, path: string, newValue: any): any {
   const clonedData = JSON.parse(JSON.stringify(data));
-  
+
   try {
     const results = JSONPath({
       path,
       json: clonedData,
-      resultType: 'all'
+      resultType: 'all',
     });
-    
-    // Process in reverse order to maintain correct indices when inserting into arrays
-    results.reverse().forEach((result: any) => {
-      const parent = result.parent;
-      const parentProperty = result.parentProperty;
-      
-      if (parent && parentProperty !== undefined) {
-        if (Array.isArray(parent)) {
-          // Insert after the current index
-          const index = parseInt(parentProperty as string);
-          parent.splice(index + 1, 0, newValue);
-        } else if (typeof parent === 'object') {
-          // For objects, we can't insert "after" in a meaningful way
-          // So we'll add it as a new property with a generated key
-          let newKey = 'new_item';
-          let counter = 0;
-          while (parent[newKey] !== undefined) {
-            newKey = `new_item_${counter++}`;
-          }
-          
-          parent[newKey] = newValue;
-        }
+
+    results.forEach((result: any) => {
+      const node = result.value;
+      if (!Array.isArray(node)) {
+        throw new Error('Path must point to array(s) to append into');
       }
+      node.push(newValue);
     });
-    
+
     return clonedData;
   } catch (error) {
-    throw new Error(`Failed to insert at path: ${error}`);
+    throw new Error(`Failed to append to array at path: ${error}`);
+  }
+}
+
+// Set (upsert) value at JSONPath.
+// Behavior:
+// - If path matches existing nodes, replace the first match only.
+// - If nothing matches, attempt to create the property on an existing parent node
+//   (no intermediate creation). If parent not found, throw.
+export function setAtPath(data: any, path: string, value: any): any {
+  const clonedData = JSON.parse(JSON.stringify(data));
+
+  try {
+    const results = JSONPath({ path, json: clonedData, resultType: 'all' });
+
+    if (results.length > 0) {
+      const result = results[0];
+      const parent = result.parent;
+      const parentProperty = result.parentProperty;
+      if (parent && parentProperty !== undefined) {
+        parent[parentProperty] = value;
+      }
+      return clonedData;
+    }
+
+    // No matches: attempt safe creation. Support simple JSONPath ending with a property.
+    function splitParentAndKey(p: string): { parentPath: string; keyExpr: string } | null {
+      let depth = 0;
+      let inSingle = false;
+      let inDouble = false;
+      for (let i = p.length - 1; i >= 0; i--) {
+        const ch = p[i];
+        if (ch === ']' && !inSingle && !inDouble) depth++;
+        else if (ch === '[' && !inSingle && !inDouble) depth--;
+        else if (ch === "'" && !inDouble) inSingle = !inSingle;
+        else if (ch === '"' && !inSingle) inDouble = !inDouble;
+
+        if (ch === '.' && depth === 0 && !inSingle && !inDouble) {
+          return { parentPath: p.slice(0, i), keyExpr: p.slice(i + 1) };
+        }
+      }
+      return null;
+    }
+
+    const split = splitParentAndKey(path);
+    if (!split) {
+      throw new Error('set supports only JSONPath expressions with a final property segment');
+    }
+
+    const parentPath = split.parentPath || '$';
+    let keyExpr = split.keyExpr;
+    const bracketMatch = keyExpr.match(/^\[['\"]?([A-Za-z0-9_]+)['\"]?\]$/);
+    const key = bracketMatch ? bracketMatch[1] : keyExpr.replace(/^\./, '');
+
+    // Find parent nodes using JSONPath
+    const parents = JSONPath({ path: parentPath, json: clonedData, wrap: true });
+    if (parents.length === 0) {
+      throw new Error('Parent path not found');
+    }
+
+    // Only set on the first matched parent
+    const parent = parents[0];
+    parent[key] = value;
+
+    return clonedData;
+  } catch (error) {
+    throw new Error(`Failed to set at path: ${error}`);
   }
 }
 
 // Helper function to delete value at JSONPath
 export function deleteAtPath(data: any, path: string): any {
   const clonedData = JSON.parse(JSON.stringify(data));
-  
+
   try {
     const results = JSONPath({
       path,
       json: clonedData,
-      resultType: 'all'
+      resultType: 'all',
     });
-    
+
     // Process in reverse order to maintain correct indices when deleting from arrays
     results.reverse().forEach((result: any) => {
       const parent = result.parent;
       const parentProperty = result.parentProperty;
-      
+
       if (parent && parentProperty !== undefined) {
         if (Array.isArray(parent)) {
           parent.splice(parseInt(parentProperty as string), 1);
@@ -156,7 +206,7 @@ export function deleteAtPath(data: any, path: string): any {
         }
       }
     });
-    
+
     return clonedData;
   } catch (error) {
     throw new Error(`Failed to delete at path: ${error}`);

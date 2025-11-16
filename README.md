@@ -9,7 +9,7 @@ This MCP server provides powerful tools for working with JSON files:
 - **search**: Search JSON data in a file by simple text and return JSONPaths with context around matching elements
 - **query**: Query JSON data in a file by JSONPath expressions
 - **replace**: Replace element at JSONPath in a file with new element
-- **insert**: Insert element after JSONPath in a file (must be an object or array)
+- **append**: Append element to a parent object or array selected by JSONPath
 - **delete**: Delete element at JSONPath in a file
 
 ## Installation
