@@ -9,7 +9,8 @@ This MCP server provides powerful tools for working with JSON files:
 - **search**: Search JSON data in a file by simple text and return JSONPaths with context around matching elements
 - **query**: Query JSON data in a file by JSONPath expressions
 - **replace**: Replace element at JSONPath in a file with new element
-- **append**: Append element to a parent object or array selected by JSONPath
+- **appendToArray**: Append element to array(s) selected by JSONPath
+- **set**: Set (upsert) a value at a JSONPath
 - **delete**: Delete element at JSONPath in a file
 
 ## Installation
@@ -80,24 +81,37 @@ Add to your MCP client configuration (e.g., Claude Desktop, Cline):
   "arguments": {
     "file": "/path/to/users.json",
     "path": "$.user.age",
-    "newValue": 31
+    "value": 31
   }
 }
 ```
 
-#### Insert data
+#### Append to array
 
 ```javascript
-// Insert into array after first element in items.json
+// Append new item to array in items.json
 {
-  "name": "insert",
+  "name": "appendToArray",
   "arguments": {
     "file": "/path/to/items.json",
-    "path": "$.items[0]",
-    "newValue": 1.5
+    "path": "$.items",
+    "value": {"name": "new item", "price": 9.99}
   }
 }
-// Result: { "items": [1, 1.5, 2, 3] }
+```
+
+#### Set (upsert) data
+
+```javascript
+// Set or create a value at path in config.json
+{
+  "name": "set",
+  "arguments": {
+    "file": "/path/to/config.json",
+    "path": "$.settings.timeout",
+    "value": 5000
+  }
+}
 ```
 
 #### Delete data
@@ -111,7 +125,6 @@ Add to your MCP client configuration (e.g., Claude Desktop, Cline):
     "path": "$.items[0]"
   }
 }
-// Result: { "items": [2, 3, 4] }
 ```
 
 ## JSONPath Syntax
