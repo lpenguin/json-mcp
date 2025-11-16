@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { JSONPath } from 'jsonpath-plus';
+import {
+  searchInJSON,
+  queryByPath,
+  replaceAtPath,
+  insertAtPath,
+  deleteAtPath,
+} from './tools.js';
 
 // Test data
 const sampleData = {
@@ -31,145 +37,6 @@ const sampleData = {
     },
   },
 };
-
-// Helper functions from index.ts (extracted for testing)
-function searchInJSON(
-  data: any,
-  searchText: string,
-  currentPath: string = '$'
-): Array<{ path: string; value: any; context: any }> {
-  const results: Array<{ path: string; value: any; context: any }> = [];
-
-  function search(obj: any, path: string, parent: any = null) {
-    if (obj === null || obj === undefined) {
-      return;
-    }
-
-    const objString = typeof obj === 'string' ? obj : JSON.stringify(obj);
-    if (objString.toLowerCase().includes(searchText.toLowerCase())) {
-      results.push({
-        path,
-        value: obj,
-        context: parent,
-      });
-    }
-
-    if (typeof obj === 'object' && obj !== null) {
-      if (Array.isArray(obj)) {
-        obj.forEach((item, index) => {
-          search(item, `${path}[${index}]`, obj);
-        });
-      } else {
-        Object.keys(obj).forEach((key) => {
-          search(obj[key], `${path}.${key}`, obj);
-        });
-      }
-    }
-  }
-
-  search(data, currentPath, null);
-  return results;
-}
-
-function queryByPath(data: any, path: string): any[] {
-  try {
-    return JSONPath({ path, json: data, wrap: true });
-  } catch (error) {
-    throw new Error(`Invalid JSONPath: ${error}`);
-  }
-}
-
-function replaceAtPath(data: any, path: string, newValue: any): any {
-  const clonedData = JSON.parse(JSON.stringify(data));
-
-  try {
-    const results = JSONPath({
-      path,
-      json: clonedData,
-      resultType: 'all'
-    });
-    
-    results.forEach((result: any) => {
-      const parent = result.parent;
-      const parentProperty = result.parentProperty;
-
-      if (parent && parentProperty !== undefined) {
-        parent[parentProperty] = newValue;
-      }
-    });
-
-    return clonedData;
-  } catch (error) {
-    throw new Error(`Failed to replace at path: ${error}`);
-  }
-}
-
-function insertAtPath(data: any, path: string, newValue: any): any {
-  const clonedData = JSON.parse(JSON.stringify(data));
-
-  try {
-    const results = JSONPath({
-      path,
-      json: clonedData,
-      resultType: 'all'
-    });
-    
-    // Process in reverse order to maintain correct indices when inserting into arrays
-    results.reverse().forEach((result: any) => {
-      const parent = result.parent;
-      const parentProperty = result.parentProperty;
-
-      if (parent && parentProperty !== undefined) {
-        if (Array.isArray(parent)) {
-          const index = parseInt(parentProperty as string);
-          parent.splice(index + 1, 0, newValue);
-        } else if (typeof parent === 'object') {
-          let newKey = 'new_item';
-          let counter = 0;
-          while (parent[newKey] !== undefined) {
-            newKey = `new_item_${counter++}`;
-          }
-
-          parent[newKey] = newValue;
-        }
-      }
-    });
-
-    return clonedData;
-  } catch (error) {
-    throw new Error(`Failed to insert at path: ${error}`);
-  }
-}
-
-function deleteAtPath(data: any, path: string): any {
-  const clonedData = JSON.parse(JSON.stringify(data));
-
-  try {
-    const results = JSONPath({
-      path,
-      json: clonedData,
-      resultType: 'all'
-    });
-    
-    // Process in reverse order to maintain correct indices when deleting from arrays
-    results.reverse().forEach((result: any) => {
-      const parent = result.parent;
-      const parentProperty = result.parentProperty;
-
-      if (parent && parentProperty !== undefined) {
-        if (Array.isArray(parent)) {
-          parent.splice(parseInt(parentProperty as string), 1);
-        } else {
-          delete parent[parentProperty];
-        }
-      }
-    });
-
-    return clonedData;
-  } catch (error) {
-    throw new Error(`Failed to delete at path: ${error}`);
-  }
-}
 
 describe('JSON MCP Server Tools', () => {
   describe('search', () => {
