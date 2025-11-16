@@ -17,6 +17,7 @@ import {
   readJSONFile,
   writeJSONFile,
 } from './tools.js';
+import { JsonValue, JsonValueSchema } from './types.js';
 
 // Create server instance
 const server = new Server(
@@ -190,12 +191,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'replace': {
-        const { file, path, newValue } = args as { file: string; path: string; newValue: any };
+        const { file, path, newValue } = args as { file: string; path: string; newValue: unknown };
         if (file === undefined) throw new Error("Missing required parameter: file");
         if (path === undefined) throw new Error("Missing required parameter: path");
         if (newValue === undefined) throw new Error("Missing required parameter: newValue");
         const data = readJSONFile(file);
-        const result = replaceAtPath(data, path, newValue);
+        const validatedNewValue = JsonValueSchema.parse(newValue);
+        const result = replaceAtPath(data, path, validatedNewValue);
         writeJSONFile(file, result);
         
         return {
@@ -209,12 +211,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'appendToArray': {
-        const { file, path, newValue } = args as { file: string; path: string; newValue: any };
+        const { file, path, newValue } = args as { file: string; path: string; newValue: unknown };
         if (file === undefined) throw new Error("Missing required parameter: file");
         if (path === undefined) throw new Error("Missing required parameter: path");
         if (newValue === undefined) throw new Error("Missing required parameter: newValue");
         const data = readJSONFile(file);
-        const result = appendToArrayAtPath(data, path, newValue);
+        const validatedNewValue = JsonValueSchema.parse(newValue);
+        const result = appendToArrayAtPath(data, path, validatedNewValue);
         writeJSONFile(file, result);
 
         return {
@@ -228,12 +231,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'set': {
-        const { file, path, value } = args as { file: string; path: string; value: any };
+        const { file, path, value } = args as { file: string; path: string; value: unknown };
         if (file === undefined) throw new Error('Missing required parameter: file');
         if (path === undefined) throw new Error('Missing required parameter: path');
         if (value === undefined) throw new Error('Missing required parameter: value');
         const data = readJSONFile(file);
-        const result = setAtPath(data, path, value);
+        const validatedValue = JsonValueSchema.parse(value);
+        const result = setAtPath(data, path, validatedValue);
         writeJSONFile(file, result);
 
         return {
