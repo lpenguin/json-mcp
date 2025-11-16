@@ -10,7 +10,6 @@ import {
 import {
   searchInJSON,
   queryByPath,
-  replaceAtPath,
   appendToArrayAtPath,
   setAtPath,
   deleteAtPath,
@@ -71,27 +70,6 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'replace',
-    description: 'Replace element at JSONPath with new element',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        file: {
-          type: 'string',
-          description: 'Path to the JSON file to modify',
-        },
-        path: {
-          type: 'string',
-          description: 'JSONPath expression pointing to the element to replace',
-        },
-        value: {
-          description: 'New value to replace the element with',
-        },
-      },
-      required: ['file', 'path', 'value'],
-    },
-  },
-  {
     name: 'appendToArray',
     description: 'Append element to array(s) selected by JSONPath',
     inputSchema: {
@@ -114,13 +92,14 @@ const tools: Tool[] = [
   },
   {
     name: 'set',
-    description: 'Set (upsert) a value at a JSONPath.',
+    description: 'Set (upsert) a value at a JSONPath. Can update the first match or all matches.',
     inputSchema: {
       type: 'object',
       properties: {
-        file: { type: 'string' },
+        file: { type: 'string', description: 'Path to the JSON file to modify' },
         path: { type: 'string', description: 'JSONPath to set (supports simple dotted/bracket property forms for creation)' },
         value: { description: 'Value to set' },
+        all: { type: 'boolean', description: 'If true, update all matching nodes. If false or omitted, update only the first match (default: false)' },
       },
       required: ['file', 'path', 'value'],
     },
@@ -190,26 +169,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case 'replace': {
-        const { file, path, value } = args as { file: string; path: string; value: unknown };
-        if (file === undefined) throw new Error("Missing required parameter: file");
-        if (path === undefined) throw new Error("Missing required parameter: path");
-        if (value === undefined) throw new Error("Missing required parameter: value");
-        const data = readJSONFile(file);
-        const validatedValue = JsonValueSchema.parse(value);
-        const result = replaceAtPath(data, path, validatedValue);
-        writeJSONFile(file, result);
-        
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'File updated successfully',
-            },
-          ],
-        };
-      }
-
       case 'appendToArray': {
         const { file, path, value } = args as { file: string; path: string; value: unknown };
         if (file === undefined) throw new Error("Missing required parameter: file");
@@ -231,13 +190,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'set': {
-        const { file, path, value } = args as { file: string; path: string; value: unknown };
+        const { file, path, value, all } = args as { file: string; path: string; value: unknown; all?: boolean };
         if (file === undefined) throw new Error('Missing required parameter: file');
         if (path === undefined) throw new Error('Missing required parameter: path');
         if (value === undefined) throw new Error('Missing required parameter: value');
         const data = readJSONFile(file);
         const validatedValue = JsonValueSchema.parse(value);
-        const result = setAtPath(data, path, validatedValue);
+        const result = setAtPath(data, path, validatedValue, all ?? false);
         writeJSONFile(file, result);
 
         return {

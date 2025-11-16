@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   searchInJSON,
   queryByPath,
-  replaceAtPath,
   appendToArrayAtPath,
   setAtPath,
   deleteAtPath,
@@ -173,35 +172,50 @@ describe('JSON MCP Server Tools', () => {
     });
   });
 
-  describe('replace', () => {
-    it('should replace a single value', () => {
-      const result = replaceAtPath(
+  describe('set with all parameter', () => {
+    it('should replace a single value when all=false (default)', () => {
+      const result = setAtPath(
         sampleData,
         '$.store.bicycle.color',
-        'blue'
+        'blue',
+        false
       );
       expect(jsonPath(result, '$.store.bicycle.color')).toEqual(['blue']);
       // Original should be unchanged
       expect(jsonPath(sampleData, '$.store.bicycle.color')).toEqual(['red']);
     });
 
-    it('should replace multiple values', () => {
-      const result = replaceAtPath(
+    it('should replace all matching values when all=true', () => {
+      const result = setAtPath(
         sampleData,
         '$.store.book[*].price',
-        9.99
+        9.99,
+        true
       );
       expect(jsonPath(result, '$.store.book[0].price')).toEqual([9.99]);
       expect(jsonPath(result, '$.store.book[1].price')).toEqual([9.99]);
       expect(jsonPath(result, '$.store.book[2].price')).toEqual([9.99]);
     });
 
+    it('should replace only first matching value when all=false', () => {
+      const result = setAtPath(
+        sampleData,
+        '$.store.book[*].price',
+        9.99,
+        false
+      );
+      expect(jsonPath(result, '$.store.book[0].price')).toEqual([9.99]);
+      expect(jsonPath(result, '$.store.book[1].price')).toEqual([12.99]);
+      expect(jsonPath(result, '$.store.book[2].price')).toEqual([8.99]);
+    });
+
     it('should replace object value', () => {
       const newBicycle = { color: 'green', price: 25.0 };
-      const result = replaceAtPath(
+      const result = setAtPath(
         sampleData,
         '$.store.bicycle',
-        newBicycle
+        newBicycle,
+        false
       );
       expect(jsonPath(result, '$.store.bicycle')).toEqual([newBicycle]);
     });

@@ -75,36 +75,6 @@ export function queryByPath(data: JsonValue, path: string): JsonValue[] {
   }
 }
 
-// Helper function to replace value at JSONPath
-export function replaceAtPath(data: JsonValue, path: string, newValue: JsonValue): JsonValue {
-  const clonedData = JsonValueSchema.parse(JSON.parse(JSON.stringify(data)));
-
-  try {
-    const results = JSONPath({
-      path,
-      json: clonedData,
-      resultType: 'all',
-    }) as Array<{ value: JsonValue; parent: JsonValue; parentProperty: string | number }>;
-
-    results.forEach((result) => {
-      const parent = result.parent;
-      const parentProperty = result.parentProperty;
-
-      if (parent && parentProperty !== undefined) {
-        if (Array.isArray(parent)) {
-          parent[parentProperty as number] = newValue;
-        } else if (typeof parent === 'object') {
-          (parent as Record<string, JsonValue>)[parentProperty as string] = newValue;
-        }
-      }
-    });
-
-    return clonedData;
-  } catch (error) {
-    throw new Error(`Failed to replace at path: ${error}`);
-  }
-}
-
 // Append to arrays only: path must select array node(s). Throws otherwise.
 export function appendToArrayAtPath(data: JsonValue, path: string, newValue: JsonValue): JsonValue {
   const clonedData = JsonValueSchema.parse(JSON.parse(JSON.stringify(data)));
@@ -132,10 +102,10 @@ export function appendToArrayAtPath(data: JsonValue, path: string, newValue: Jso
 
 // Set (upsert) value at JSONPath.
 // Behavior:
-// - If path matches existing nodes, replace the first match only.
+// - If path matches existing nodes, replace the first match (or all matches if all=true).
 // - If nothing matches, attempt to create the property on an existing parent node
 //   (no intermediate creation). If parent not found, throw.
-export function setAtPath(data: JsonValue, path: string, value: JsonValue): JsonValue {
+export function setAtPath(data: JsonValue, path: string, value: JsonValue, all = false): JsonValue {
   const clonedData = JsonValueSchema.parse(JSON.parse(JSON.stringify(data)));
 
   try {
@@ -146,16 +116,21 @@ export function setAtPath(data: JsonValue, path: string, value: JsonValue): Json
     }>;
 
     if (results.length > 0) {
-      const result = results[0];
-      const parent = result.parent;
-      const parentProperty = result.parentProperty;
-      if (parent && parentProperty !== undefined) {
-        if (Array.isArray(parent)) {
-          parent[parentProperty as number] = value;
-        } else if (typeof parent === 'object') {
-          (parent as Record<string, JsonValue>)[parentProperty as string] = value;
+      // If all=true, update all matches; otherwise just the first
+      const resultsToUpdate = all ? results : [results[0]];
+      
+      resultsToUpdate.forEach((result) => {
+        const parent = result.parent;
+        const parentProperty = result.parentProperty;
+        if (parent && parentProperty !== undefined) {
+          if (Array.isArray(parent)) {
+            parent[parentProperty as number] = value;
+          } else if (typeof parent === 'object') {
+            (parent as Record<string, JsonValue>)[parentProperty as string] = value;
+          }
         }
-      }
+      });
+      
       return clonedData;
     }
 

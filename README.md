@@ -8,9 +8,8 @@ This MCP server provides powerful tools for working with JSON files:
 
 - **search**: Search JSON data in a file by simple text and return JSONPaths with context around matching elements
 - **query**: Query JSON data in a file by JSONPath expressions
-- **replace**: Replace element at JSONPath in a file with new element
 - **appendToArray**: Append element to array(s) selected by JSONPath
-- **set**: Set (upsert) a value at a JSONPath
+- **set**: Set (upsert) a value at a JSONPath. Can update a single match or all matches.
 - **delete**: Delete element at JSONPath in a file
 
 ## Installation
@@ -72,20 +71,6 @@ Add to your MCP client configuration (e.g., Claude Desktop, Cline):
 }
 ```
 
-#### Replace data at path
-
-```javascript
-// Update a user's age in users.json
-{
-  "name": "replace",
-  "arguments": {
-    "file": "/path/to/users.json",
-    "path": "$.user.age",
-    "value": 31
-  }
-}
-```
-
 #### Append to array
 
 ```javascript
@@ -103,13 +88,24 @@ Add to your MCP client configuration (e.g., Claude Desktop, Cline):
 #### Set (upsert) data
 
 ```javascript
-// Set or create a value at path in config.json
+// Set or create a value at path in config.json (updates first match only)
 {
   "name": "set",
   "arguments": {
     "file": "/path/to/config.json",
     "path": "$.settings.timeout",
     "value": 5000
+  }
+}
+
+// Set value at all matching paths (when all=true)
+{
+  "name": "set",
+  "arguments": {
+    "file": "/path/to/data.json",
+    "path": "$.items[*].price",
+    "value": 9.99,
+    "all": true
   }
 }
 ```

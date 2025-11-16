@@ -49,12 +49,11 @@ describe('MCP Integration Tests', () => {
     const response = await client.listTools();
     
     expect(response.tools).toBeDefined();
-    expect(response.tools.length).toBe(6); // Now 6 tools (added set)
+    expect(response.tools.length).toBe(5); // Now 5 tools (removed replace, kept set)
     
     const toolNames = response.tools.map((tool) => tool.name);
     expect(toolNames).toContain('search');
     expect(toolNames).toContain('query');
-    expect(toolNames).toContain('replace');
     expect(toolNames).toContain('appendToArray');
     expect(toolNames).toContain('delete');
     expect(toolNames).toContain('set');
@@ -107,24 +106,25 @@ describe('MCP Integration Tests', () => {
     expect(results).toEqual(['Book 1', 'Book 2']);
   });
 
-  it('should replace data at JSONPath', async () => {
+  it('should set data at JSONPath with all=true', async () => {
     const testData = {
       user: { name: 'Alice', age: 30 },
     };
     
-    const testFile = join(testDir, 'test-replace.json');
+    const testFile = join(testDir, 'test-set.json');
     writeFileSync(testFile, JSON.stringify(testData, null, 2));
 
-    const replaceResponse = await client.callTool({
-      name: 'replace',
+    const setResponse = await client.callTool({
+      name: 'set',
       arguments: {
         file: testFile,
         path: '$.user.age',
         value: 31,
+        all: true,
       },
     });
 
-    const responseText = ((replaceResponse as any).content[0] as any).text;
+    const responseText = ((setResponse as any).content[0] as any).text;
     expect(responseText).toBe('File updated successfully');
     
     // Read the file to verify the change
@@ -227,11 +227,11 @@ describe('MCP Integration Tests', () => {
   expect(((resp as any).content[0] as any).text).toContain('Missing required parameter: file');
     });
 
-    it('replace should error when missing value', async () => {
-      const testFile = join(testDir, 'test-invalid-replace.json');
+    it('set should error when missing value', async () => {
+      const testFile = join(testDir, 'test-invalid-set.json');
       writeFileSync(testFile, JSON.stringify({ user: { age: 1 } }, null, 2));
       const resp = await client.callTool({
-        name: 'replace',
+        name: 'set',
         arguments: { file: testFile, path: '$.user.age' }, // missing value
       });
 
