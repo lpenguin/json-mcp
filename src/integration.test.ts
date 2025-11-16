@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { spawn } from 'child_process';
@@ -11,7 +11,7 @@ describe('MCP Integration Tests', () => {
   let transport: StdioClientTransport;
   let testDir: string;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     // Create temporary directory for test files
     testDir = mkdtempSync(join(tmpdir(), 'json-mcp-test-'));
 
@@ -38,7 +38,7 @@ describe('MCP Integration Tests', () => {
     await client.connect(transport);
   });
 
-  afterEach(() => {
+  afterAll(() => {
     // Clean up temporary directory
     if (testDir) {
       rmSync(testDir, { recursive: true, force: true });
