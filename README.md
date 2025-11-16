@@ -19,13 +19,13 @@ This MCP server provides powerful tools for working with JSON data:
 You can run this server using npx:
 
 ```bash
-npx json-mcp
+npx @lpenguin/json-mcp
 ```
 
 Or install it globally:
 
 ```bash
-npm install -g json-mcp
+npm install -g @lpenguin/json-mcp
 ```
 
 ## Usage
@@ -37,9 +37,9 @@ Add to your MCP client configuration (e.g., Claude Desktop, Cline):
 ```json
 {
   "mcpServers": {
-    "json-mcp": {
+    "@lpenguin/json-mcp": {
       "command": "npx",
-      "args": ["json-mcp"]
+      "args": ["-y", "@lpenguin/json-mcp"]
     }
   }
 }
