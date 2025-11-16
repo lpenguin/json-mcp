@@ -165,8 +165,6 @@ npm run build
 
 ```bash
 npm test
-npm run test:watch  # Watch mode
-npm run test:ui     # UI mode
 ```
 
 ## License
