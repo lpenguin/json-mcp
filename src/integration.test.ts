@@ -1,13 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { spawn } from 'child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('MCP Integration Tests', () => {
   let client: Client;
   let transport: StdioClientTransport;
+  let testDir: string;
 
   beforeEach(async () => {
+    // Create temporary directory for test files
+    testDir = mkdtempSync(join(tmpdir(), 'json-mcp-test-'));
+
     // Start the MCP server
     const serverProcess = spawn('tsx', ['src/index.ts'], {
       cwd: process.cwd(),
@@ -31,11 +38,18 @@ describe('MCP Integration Tests', () => {
     await client.connect(transport);
   });
 
+  afterEach(() => {
+    // Clean up temporary directory
+    if (testDir) {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
   it('should list all available tools', async () => {
     const response = await client.listTools();
     
     expect(response.tools).toBeDefined();
-    expect(response.tools.length).toBeGreaterThan(0);
+    expect(response.tools.length).toBe(5); // Only 5 tools now (removed set_data and get_data)
     
     const toolNames = response.tools.map((tool) => tool.name);
     expect(toolNames).toContain('search');
@@ -43,33 +57,8 @@ describe('MCP Integration Tests', () => {
     expect(toolNames).toContain('replace');
     expect(toolNames).toContain('insert');
     expect(toolNames).toContain('delete');
-    expect(toolNames).toContain('set_data');
-    expect(toolNames).toContain('get_data');
-  });
-
-  it('should set and get data', async () => {
-    const testData = {
-      users: [
-        { id: 1, name: 'Alice' },
-        { id: 2, name: 'Bob' },
-      ],
-    };
-
-    const setResponse = await client.callTool({
-      name: 'set_data',
-      arguments: { data: testData },
-    });
-
-    expect(setResponse.content[0].type).toBe('text');
-    expect((setResponse.content[0] as any).text).toContain('successfully');
-
-    const getResponse = await client.callTool({
-      name: 'get_data',
-      arguments: {},
-    });
-
-    const returnedData = JSON.parse((getResponse.content[0] as any).text);
-    expect(returnedData).toEqual(testData);
+    expect(toolNames).not.toContain('set_data');
+    expect(toolNames).not.toContain('get_data');
   });
 
   it('should search JSON data', async () => {
@@ -77,12 +66,15 @@ describe('MCP Integration Tests', () => {
       items: ['apple', 'banana', 'cherry'],
       metadata: { fruit: 'apple' },
     };
+    
+    const testFile = join(testDir, 'test-search.json');
+    writeFileSync(testFile, JSON.stringify(testData, null, 2));
 
     const searchResponse = await client.callTool({
       name: 'search',
       arguments: {
+        file: testFile,
         searchText: 'apple',
-        data: testData,
       },
     });
 
@@ -100,12 +92,15 @@ describe('MCP Integration Tests', () => {
         ],
       },
     };
+    
+    const testFile = join(testDir, 'test-query.json');
+    writeFileSync(testFile, JSON.stringify(testData, null, 2));
 
     const queryResponse = await client.callTool({
       name: 'query',
       arguments: {
+        file: testFile,
         path: '$.store.books[*].title',
-        data: testData,
       },
     });
 
@@ -117,13 +112,16 @@ describe('MCP Integration Tests', () => {
     const testData = {
       user: { name: 'Alice', age: 30 },
     };
+    
+    const testFile = join(testDir, 'test-replace.json');
+    writeFileSync(testFile, JSON.stringify(testData, null, 2));
 
     const replaceResponse = await client.callTool({
       name: 'replace',
       arguments: {
+        file: testFile,
         path: '$.user.age',
         newValue: 31,
-        data: testData,
       },
     });
 
@@ -135,12 +133,15 @@ describe('MCP Integration Tests', () => {
     const testData = {
       items: [1, 2, 3, 4],
     };
+    
+    const testFile = join(testDir, 'test-delete.json');
+    writeFileSync(testFile, JSON.stringify(testData, null, 2));
 
     const deleteResponse = await client.callTool({
       name: 'delete',
       arguments: {
+        file: testFile,
         path: '$.items[0]',
-        data: testData,
       },
     });
 
@@ -152,13 +153,16 @@ describe('MCP Integration Tests', () => {
     const testData = {
       items: [1, 2, 3],
     };
+    
+    const testFile = join(testDir, 'test-insert.json');
+    writeFileSync(testFile, JSON.stringify(testData, null, 2));
 
     const insertResponse = await client.callTool({
       name: 'insert',
       arguments: {
+        file: testFile,
         path: '$.items[1]',
         newValue: 1.5,
-        data: testData,
       },
     });
 
@@ -172,8 +176,7 @@ describe('MCP Integration Tests', () => {
       await client.callTool({
         name: 'query',
         arguments: {
-          // Missing required 'path' parameter
-          data: {},
+          // Missing required 'file' and 'path' parameters
         },
       });
       // If we get here, the test should fail
