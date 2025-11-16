@@ -4,15 +4,13 @@ A Model Context Protocol (MCP) server for querying and manipulating JSON data us
 
 ## Features
 
-This MCP server provides powerful tools for working with JSON data:
+This MCP server provides powerful tools for working with JSON files:
 
-- **search**: Search JSON data by simple text and return JSONPaths with context around matching elements
-- **query**: Query JSON data by JSONPath expressions
-- **replace**: Replace element at JSONPath with new element
-- **insert**: Insert element after JSONPath (must be an object or array)
-- **delete**: Delete element at JSONPath
-- **set_data**: Store JSON data in server memory
-- **get_data**: Retrieve stored JSON data
+- **search**: Search JSON data in a file by simple text and return JSONPaths with context around matching elements
+- **query**: Query JSON data in a file by JSONPath expressions
+- **replace**: Replace element at JSONPath in a file with new element
+- **insert**: Insert element after JSONPath in a file (must be an object or array)
+- **delete**: Delete element at JSONPath in a file
 
 ## Installation
 
@@ -47,18 +45,15 @@ Add to your MCP client configuration (e.g., Claude Desktop, Cline):
 
 ### Tool Examples
 
-#### Search for text in JSON
+#### Search for text in JSON file
 
 ```javascript
-// Search for "apple" in the data
+// Search for "apple" in data.json
 {
   "name": "search",
   "arguments": {
-    "searchText": "apple",
-    "data": {
-      "items": ["apple", "banana", "cherry"],
-      "metadata": { "fruit": "apple" }
-    }
+    "file": "/path/to/data.json",
+    "searchText": "apple"
   }
 }
 ```
@@ -66,19 +61,12 @@ Add to your MCP client configuration (e.g., Claude Desktop, Cline):
 #### Query by JSONPath
 
 ```javascript
-// Get all book titles
+// Get all book titles from books.json
 {
   "name": "query",
   "arguments": {
-    "path": "$.store.book[*].title",
-    "data": {
-      "store": {
-        "book": [
-          { "title": "Book 1", "price": 10 },
-          { "title": "Book 2", "price": 20 }
-        ]
-      }
-    }
+    "file": "/path/to/books.json",
+    "path": "$.store.book[*].title"
   }
 }
 ```
@@ -86,13 +74,13 @@ Add to your MCP client configuration (e.g., Claude Desktop, Cline):
 #### Replace data at path
 
 ```javascript
-// Update a user's age
+// Update a user's age in users.json
 {
   "name": "replace",
   "arguments": {
+    "file": "/path/to/users.json",
     "path": "$.user.age",
-    "newValue": 31,
-    "data": { "user": { "name": "Alice", "age": 30 } }
+    "newValue": 31
   }
 }
 ```
@@ -100,13 +88,13 @@ Add to your MCP client configuration (e.g., Claude Desktop, Cline):
 #### Insert data
 
 ```javascript
-// Insert into array after first element
+// Insert into array after first element in items.json
 {
   "name": "insert",
   "arguments": {
+    "file": "/path/to/items.json",
     "path": "$.items[0]",
-    "newValue": 1.5,
-    "data": { "items": [1, 2, 3] }
+    "newValue": 1.5
   }
 }
 // Result: { "items": [1, 1.5, 2, 3] }
@@ -115,12 +103,12 @@ Add to your MCP client configuration (e.g., Claude Desktop, Cline):
 #### Delete data
 
 ```javascript
-// Delete first item from array
+// Delete first item from array in items.json
 {
   "name": "delete",
   "arguments": {
-    "path": "$.items[0]",
-    "data": { "items": [1, 2, 3, 4] }
+    "file": "/path/to/items.json",
+    "path": "$.items[0]"
   }
 }
 // Result: { "items": [2, 3, 4] }

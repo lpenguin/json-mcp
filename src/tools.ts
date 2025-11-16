@@ -1,4 +1,25 @@
 import { JSONPath } from 'jsonpath-plus';
+import { readFileSync, writeFileSync } from 'fs';
+
+// Helper function to read JSON from file
+export function readJSONFile(filePath: string): any {
+  try {
+    const content = readFileSync(filePath, 'utf-8');
+    return JSON.parse(content);
+  } catch (error) {
+    throw new Error(`Failed to read or parse JSON file: ${error}`);
+  }
+}
+
+// Helper function to write JSON to file
+export function writeJSONFile(filePath: string, data: any): void {
+  try {
+    const content = JSON.stringify(data, null, 2);
+    writeFileSync(filePath, content, 'utf-8');
+  } catch (error) {
+    throw new Error(`Failed to write JSON file: ${error}`);
+  }
+}
 
 // Helper function to search text in JSON
 export function searchInJSON(data: any, searchText: string, currentPath: string = '$'): Array<{ path: string; value: any; context: any }> {

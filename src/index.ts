@@ -13,10 +13,9 @@ import {
   replaceAtPath,
   insertAtPath,
   deleteAtPath,
+  readJSONFile,
+  writeJSONFile,
 } from './tools.js';
-
-// In-memory JSON data store
-let jsonData: any = {};
 
 // Create server instance
 const server = new Server(
@@ -39,16 +38,16 @@ const tools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
+        file: {
+          type: 'string',
+          description: 'Path to the JSON file to search',
+        },
         searchText: {
           type: 'string',
           description: 'Text to search for in the JSON data',
         },
-        data: {
-          type: 'object',
-          description: 'Optional JSON data to search. If not provided, uses the stored data.',
-        },
       },
-      required: ['searchText'],
+      required: ['file', 'searchText'],
     },
   },
   {
@@ -57,16 +56,16 @@ const tools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
+        file: {
+          type: 'string',
+          description: 'Path to the JSON file to query',
+        },
         path: {
           type: 'string',
           description: 'JSONPath expression (e.g., "$.store.book[*].author")',
         },
-        data: {
-          type: 'object',
-          description: 'Optional JSON data to query. If not provided, uses the stored data.',
-        },
       },
-      required: ['path'],
+      required: ['file', 'path'],
     },
   },
   {
@@ -75,6 +74,10 @@ const tools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
+        file: {
+          type: 'string',
+          description: 'Path to the JSON file to modify',
+        },
         path: {
           type: 'string',
           description: 'JSONPath expression pointing to the element to replace',
@@ -82,12 +85,8 @@ const tools: Tool[] = [
         newValue: {
           description: 'New value to replace the element with',
         },
-        data: {
-          type: 'object',
-          description: 'Optional JSON data to modify. If not provided, uses and updates the stored data.',
-        },
       },
-      required: ['path', 'newValue'],
+      required: ['file', 'path', 'newValue'],
     },
   },
   {
@@ -96,6 +95,10 @@ const tools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
+        file: {
+          type: 'string',
+          description: 'Path to the JSON file to modify',
+        },
         path: {
           type: 'string',
           description: 'JSONPath expression pointing to the location to insert after',
@@ -103,12 +106,8 @@ const tools: Tool[] = [
         newValue: {
           description: 'New value to insert',
         },
-        data: {
-          type: 'object',
-          description: 'Optional JSON data to modify. If not provided, uses and updates the stored data.',
-        },
       },
-      required: ['path', 'newValue'],
+      required: ['file', 'path', 'newValue'],
     },
   },
   {
@@ -117,38 +116,16 @@ const tools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
+        file: {
+          type: 'string',
+          description: 'Path to the JSON file to modify',
+        },
         path: {
           type: 'string',
           description: 'JSONPath expression pointing to the element to delete',
         },
-        data: {
-          type: 'object',
-          description: 'Optional JSON data to modify. If not provided, uses and updates the stored data.',
-        },
       },
-      required: ['path'],
-    },
-  },
-  {
-    name: 'set_data',
-    description: 'Set the JSON data to work with',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        data: {
-          type: 'object',
-          description: 'JSON data to store',
-        },
-      },
-      required: ['data'],
-    },
-  },
-  {
-    name: 'get_data',
-    description: 'Get the currently stored JSON data',
-    inputSchema: {
-      type: 'object',
-      properties: {},
+      required: ['file', 'path'],
     },
   },
 ];
@@ -165,9 +142,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case 'search': {
-        const { searchText, data } = args as { searchText: string; data?: any };
-        const dataToSearch = data || jsonData;
-        const results = searchInJSON(dataToSearch, searchText);
+        const { file, searchText } = args as { file: string; searchText: string };
+        const data = readJSONFile(file);
+        const results = searchInJSON(data, searchText);
         
         return {
           content: [
@@ -180,9 +157,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'query': {
-        const { path, data } = args as { path: string; data?: any };
-        const dataToQuery = data || jsonData;
-        const results = queryByPath(dataToQuery, path);
+        const { file, path } = args as { file: string; path: string };
+        const data = readJSONFile(file);
+        const results = queryByPath(data, path);
         
         return {
           content: [
@@ -195,13 +172,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'replace': {
-        const { path, newValue, data } = args as { path: string; newValue: any; data?: any };
-        const dataToModify = data || jsonData;
-        const result = replaceAtPath(dataToModify, path, newValue);
-        
-        if (!data) {
-          jsonData = result;
-        }
+        const { file, path, newValue } = args as { file: string; path: string; newValue: any };
+        const data = readJSONFile(file);
+        const result = replaceAtPath(data, path, newValue);
+        writeJSONFile(file, result);
         
         return {
           content: [
@@ -214,13 +188,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'insert': {
-        const { path, newValue, data } = args as { path: string; newValue: any; data?: any };
-        const dataToModify = data || jsonData;
-        const result = insertAtPath(dataToModify, path, newValue);
-        
-        if (!data) {
-          jsonData = result;
-        }
+        const { file, path, newValue } = args as { file: string; path: string; newValue: any };
+        const data = readJSONFile(file);
+        const result = insertAtPath(data, path, newValue);
+        writeJSONFile(file, result);
         
         return {
           content: [
@@ -233,44 +204,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'delete': {
-        const { path, data } = args as { path: string; data?: any };
-        const dataToModify = data || jsonData;
-        const result = deleteAtPath(dataToModify, path);
-        
-        if (!data) {
-          jsonData = result;
-        }
+        const { file, path } = args as { file: string; path: string };
+        const data = readJSONFile(file);
+        const result = deleteAtPath(data, path);
+        writeJSONFile(file, result);
         
         return {
           content: [
             {
               type: 'text',
               text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
-      }
-
-      case 'set_data': {
-        const { data } = args as { data: any };
-        jsonData = data;
-        
-        return {
-          content: [
-            {
-              type: 'text',
-              text: 'Data stored successfully',
-            },
-          ],
-        };
-      }
-
-      case 'get_data': {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(jsonData, null, 2),
             },
           ],
         };
